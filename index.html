@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Grafik Realisasi Anggaran</title>
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://canvasjs.com/assets/script/canvasjs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/0.21.1/axios.min.js"></script>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            height: 100vh;
+            margin: 0;
+            background: linear-gradient(to right, #1e3c72, #2a5298);
+            color: white;
+        }
+        #header {
+            width: 100%;
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        #header img {
+            height: 50px;
+            margin-right: 20px;
+        }
+        #chartContainer {
+            height: 1000px; 
+            width: 100%;
+        }
+        .navbar {
+            margin-bottom: 20px;
+            width: 100%;
+        }
+        #controls {
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div id="header">
+        
+        <h1>Grafik Serapan Anggaran Program Studi di Lingkungan Program Pascasarjana ULM</h1>
+    </div>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+              <ul class="navbar-nav">
+                <li class="nav-item active">
+                    <a class="nav-link" href="#">Beranda</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="#">Grafik Serapan Anggaran</a>
+                </li>
+            </ul>
+        </div>
+    </nav>
+    <div id="controls">
+        
+        <label for="bulanSelect">Pilih Bulan:</label>
+        <select id="bulanSelect">
+            <option value="all">Semua</option>
+            <option value="januari">Januari</option>
+            <option value="februari">Februari</option>
+            <option value="maret">Maret</option>
+            <option value="april">April</option>
+            <option value="mei">Mei</option>
+            <option value="juni">Juni</option>
+            <option value="juli">Juli</option>
+            <option value="agustus">Agustus</option>
+            <option value="september">September</option>
+            <option value="oktober">Oktober</option>
+            <option value="november">November</option>
+            <option value="desember">Desember</option>
+        </select>
+        <select id="tahunSelect">
+            <option value="2024">2024</option>
+         </select>
+        <button onclick="getData()">Tampilkan Data</button>
+    </div>
+    <div id="chartContainer"></div>
+    <script>
+        function getData() {
+            var selectedYear = document.getElementById("tahunSelect").value;
+            var selectedMonth = document.getElementById("bulanSelect").value;
+            const URL = "https://script.google.com/macros/s/AKfycbxeu0yx8_OEAgLkTROZcVHZLQtip4d5zqLDQYc3dMtuVVrRX4IulQiScjy0H3cuAz8wCw/exec";
+
+            axios.get(URL)
+                .then(response => {
+                    const data = response.data.data;
+                    const months = ["januari", "februari", "maret", "april", "mei", "juni", "juli", "agustus", "september", "oktober", "november", "desember"];
+                    const realisasiDataPoints = [];
+
+                    data.sort((a, b) => b.kode - a.kode);
+
+                    data.forEach(row => {
+                        if (row.kode !== 1) {
+                            let totalRealisasi = 0;
+
+                            if (selectedMonth === "all") {
+                                months.forEach(month => {
+                                    if (row[month] !== "") {
+                                        totalRealisasi += row[month];
+                                    }
+                                });
+                            } else {
+                                const monthIndex = months.indexOf(selectedMonth);
+                                for (let i = 0; i <= monthIndex; i++) {
+                                    if (row[months[i]] !== "") {
+                                        totalRealisasi += row[months[i]];
+                                    }
+                                }
+                            }
+
+                            const percentRealisasi = (totalRealisasi / row.pagu) * 100;
+                            const realisasiColor = percentRealisasi > 70 ? "green" : "red";
+
+                            realisasiDataPoints.push({
+                                y: percentRealisasi,
+                                label: row.nama_unit,
+                                color: realisasiColor,
+                                indexLabel: `${percentRealisasi.toFixed(2)}%`,
+                                indexLabelPlacement: "inside",
+                                indexLabelFontColor: "white",
+                                indexLabelFontSize: 14
+                            });
+                        }
+                    });
+
+                    const chartTitle = `Grafik Realisasi Serapan Anggaran Tahun ${selectedYear}`;
+                    const axisYTitle = selectedMonth === "all"
+                        ? `Realisasi Serapan Anggaran Tahun ${selectedYear} (%)`
+                        : `Realisasi Serapan Anggaran sampai dengan bulan ${selectedMonth.charAt(0).toUpperCase() + selectedMonth.slice(1)} ${selectedYear} (%)`;
+
+                    var chart = new CanvasJS.Chart("chartContainer", {
+                        animationEnabled: true,
+                       
+                        axisY: {
+                            title: axisYTitle,
+                            interval: 10,
+                            labelFontSize: 14
+                        },
+                        axisX: {
+                            title: "Program Studi",
+                            labelFontSize: 14,
+                            interval: 1,
+                            labelAutoFit: true
+                        },
+                        dataPointWidth: 30,
+                        toolTip: {
+                            shared: true,
+                            content: function (e) {
+                                var content = `<span style='color:DodgerBlue'><strong>${e.entries[0].dataPoint.label}</strong></span><br/>`;
+                                var total = 0;
+                                for (var i = 0; i < e.entries.length; i++) {
+                                    total += e.entries[i].dataPoint.y;
+                                    content += `<span style='color:${e.entries[i].dataSeries.color}'>${e.entries[i].dataSeries.name}</span>: <strong>${e.entries[i].dataPoint.y.toFixed(2)}%</strong> <br/>`;
+                                }
+
+                                return content;
+                            }
+                        },
+                        legend: {
+                            cursor: "pointer",
+                            itemclick: function (e) {
+                                e.dataSeries.visible = typeof (e.dataSeries.visible) === "undefined" || e.dataSeries.visible;
+                                e.dataSeries.visible = !e.dataSeries.visible;
+                                chart.render();
+                            }
+                        },
+                        data: [
+                            {
+                                type: "bar",
+                                showInLegend: false,
+                                name: "Realisasi",
+                                dataPoints: realisasiDataPoints
+                            }
+                        ]
+                    });
+
+                    chart.render();
+                })
+                .catch(error => {
+                    console.error('Error fetching data:', error);
+                });
+        }
+    </script>
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+</body>
+</html>
