@@ -1,182 +1,123 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Grafik Realisasi Anggaran</title>
-    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
-    <script src="https://canvasjs.com/assets/script/canvasjs.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/0.21.1/axios.min.js"></script>
-    <style>
-        body {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: flex-start;
-            height: 100vh;
-            margin: 0;
-            background: linear-gradient(to right, #1e3c72, #2a5298);
-            color: white;
-        }
-        #header {
-            width: 100%;
-            padding: 20px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        #header img {
-            height: 50px;
-            margin-right: 20px;
-        }
-        #chartContainer {
-            height: 1000px; 
-            width: 100%;
-        }
-        .navbar {
-            margin-bottom: 20px;
-            width: 100%;
-        }
-        #controls {
-            margin-bottom: 20px;
-        }
-    </style>
-</head>
-<body>
-   
- <br>
-    <div id="controls">
-        
-        <label for="bulanSelect">Pilih Bulan:</label>
-        <select id="bulanSelect">
-            <option value="all">Semua</option>
-            <option value="januari">Januari</option>
-            <option value="februari">Februari</option>
-            <option value="maret">Maret</option>
-            <option value="april">April</option>
-            <option value="mei">Mei</option>
-            <option value="juni">Juni</option>
-            <option value="juli">Juli</option>
-            <option value="agustus">Agustus</option>
-            <option value="september">September</option>
-            <option value="oktober">Oktober</option>
-            <option value="november">November</option>
-            <option value="desember">Desember</option>
-        </select>
-        <select id="tahunSelect">
-            <option value="2024">2024</option>
-         </select>
-        <button onclick="getData()">Tampilkan Data</button>
-    </div>
-    <div id="chartContainer"></div>
-    <script>
-        function getData() {
-            var selectedYear = document.getElementById("tahunSelect").value;
-            var selectedMonth = document.getElementById("bulanSelect").value;
-            const URL = "https://script.google.com/macros/s/AKfycbxeu0yx8_OEAgLkTROZcVHZLQtip4d5zqLDQYc3dMtuVVrRX4IulQiScjy0H3cuAz8wCw/exec";
+<div style="width: 100%; max-width: 1200px; margin: 0 auto;">
+    <!-- Filter Bulan -->
+    <label for="monthFilter">Pilih Bulan: </label>
+    <select id="monthFilter">
+        <option value="0">Januari</option>
+        <option value="1">Februari</option>
+        <option value="2">Maret</option>
+        <option value="3">April</option>
+        <option value="4">Mei</option>
+        <option value="5">Juni</option>
+        <option value="6">Juli</option>
+        <option value="7">Agustus</option>
+        <option value="8">September</option>
+        <option value="9">Oktober</option>
+        <option value="10">November</option>
+        <option value="11">Desember</option>
+    </select> 2025
 
-            axios.get(URL)
-                .then(response => {
-                    const data = response.data.data;
-                    const months = ["januari", "februari", "maret", "april", "mei", "juni", "juli", "agustus", "september", "oktober", "november", "desember"];
-                    const realisasiDataPoints = [];
+    <!-- Grafik -->
+    <canvas id="myChart" width="1200" height="600"></canvas>
+</div>
 
-                    data.sort((a, b) => b.kode - a.kode);
+<!-- jQuery dari CDN -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<!-- Chart.js dari CDN -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<!-- ChartDataLabels untuk persentase -->
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
+<script>
+    jQuery(document).ready(function() {
+        var jsonUrl = "https://script.google.com/macros/s/AKfycbwiiw4maZTSzTwbFf8-HtvVKWpGkmUCJZ5JY549SJiR9A-LJ_pkSfb2bdK2bucazIIUgg/exec";
+        var chart; // Variabel untuk menyimpan instance Chart.js
 
-                    data.forEach(row => {
-                        if (row.kode !== 1) {
-                            let totalRealisasi = 0;
+        // Ambil data JSON
+        jQuery.getJSON(jsonUrl, function(data) {
+            var labels = data[1].slice(2, 14); // Bulan (hanya untuk referensi)
+            var allData = data.slice(2); // Data unit mulai dari baris ketiga
 
-                            if (selectedMonth === "all") {
-                                months.forEach(month => {
-                                    if (row[month] !== "") {
-                                        totalRealisasi += row[month];
-                                    }
-                                });
-                            } else {
-                                const monthIndex = months.indexOf(selectedMonth);
-                                for (let i = 0; i <= monthIndex; i++) {
-                                    if (row[months[i]] !== "") {
-                                        totalRealisasi += row[months[i]];
-                                    }
-                                }
-                            }
-
-                            const percentRealisasi = (totalRealisasi / row.pagu) * 100;
-                            const realisasiColor = percentRealisasi > 70 ? "green" : "red";
-
-                            realisasiDataPoints.push({
-                                y: percentRealisasi,
-                                label: row.nama_unit,
-                                color: realisasiColor,
-                                indexLabel: `${percentRealisasi.toFixed(2)}%`,
-                                indexLabelPlacement: "inside",
-                                indexLabelFontColor: "white",
-                                indexLabelFontSize: 14
-                            });
-                        }
-                    });
-
-                    const chartTitle = `Grafik Realisasi Serapan Anggaran Tahun ${selectedYear}`;
-                    const axisYTitle = selectedMonth === "all"
-                        ? `Realisasi Serapan Anggaran Tahun ${selectedYear} (%)`
-                        : `Realisasi Serapan Anggaran sampai dengan bulan ${selectedMonth.charAt(0).toUpperCase() + selectedMonth.slice(1)} ${selectedYear} (%)`;
-
-                    var chart = new CanvasJS.Chart("chartContainer", {
-                        animationEnabled: true,
-                       
-                        axisY: {
-                            title: axisYTitle,
-                            interval: 10,
-                            labelFontSize: 14
-                        },
-                        axisX: {
-                            title: "Program Studi",
-                            labelFontSize: 14,
-                            interval: 1,
-                            labelAutoFit: true
-                        },
-                        dataPointWidth: 30,
-                        toolTip: {
-                            shared: true,
-                            content: function (e) {
-                                var content = `<span style='color:DodgerBlue'><strong>${e.entries[0].dataPoint.label}</strong></span><br/>`;
-                                var total = 0;
-                                for (var i = 0; i < e.entries.length; i++) {
-                                    total += e.entries[i].dataPoint.y;
-                                    content += `<span style='color:${e.entries[i].dataSeries.color}'>${e.entries[i].dataSeries.name}</span>: <strong>${e.entries[i].dataPoint.y.toFixed(2)}%</strong> <br/>`;
-                                }
-
-                                return content;
-                            }
-                        },
-                        legend: {
-                            cursor: "pointer",
-                            itemclick: function (e) {
-                                e.dataSeries.visible = typeof (e.dataSeries.visible) === "undefined" || e.dataSeries.visible;
-                                e.dataSeries.visible = !e.dataSeries.visible;
-                                chart.render();
-                            }
-                        },
-                        data: [
-                            {
-                                type: "bar",
-                                showInLegend: false,
-                                name: "Realisasi",
-                                dataPoints: realisasiDataPoints
-                            }
-                        ]
-                    });
-
-                    chart.render();
-                })
-                .catch(error => {
-                    console.error('Error fetching data:', error);
+            // Fungsi untuk menggambar grafik berdasarkan bulan
+            function drawChart(monthIndex) {
+                // Hitung total nilai untuk bulan yang dipilih
+                var total = 0;
+                allData.forEach(function(row) {
+                    if (row && row.length > 1 && row[1] !== "Pascasarjana") {
+                        total += Number(row[2 + monthIndex]);
+                    }
                 });
-        }
-    </script>
-    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js"></script>
-    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
-</body>
-</html>
+
+                // Siapkan dataset untuk bulan yang dipilih
+                var datasets = [{
+                    label: 'Persentase Program Studi',
+                    data: allData
+                        .filter(row => row && row.length > 1 && row[1] !== "Pascasarjana")
+                        .map(row => Number(row[2 + monthIndex])), // Nilai untuk bulan tertentu
+                    backgroundColor: 'rgba(54, 162, 235, 0.5)',
+                    borderColor: 'rgba(54, 162, 235, 1)',
+                    borderWidth: 1
+                }];
+
+                // Hancurkan grafik lama jika ada
+                if (chart) {
+                    chart.destroy();
+                }
+
+                // Buat grafik baru
+                var ctx = document.getElementById('myChart').getContext('2d');
+                chart = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: allData
+                            .filter(row => row && row.length > 1 && row[1] !== "Pascasarjana")
+                            .map(row => row[1]), // Nama program studi
+                        datasets: datasets
+                    },
+                    options: {
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                title: { display: true, text: 'Nilai' }
+                            },
+                            x: {
+                                title: { display: true, text: 'Program Studi' }
+                            }
+                        },
+                        plugins: {
+                            legend: { display: false }, // Sembunyikan legenda karena hanya satu dataset
+                            title: {
+                                display: true,
+                                text: 'Data Program Studi - ' + labels[monthIndex]
+                            },
+                            datalabels: {
+                                anchor: 'end',
+                                align: 'top',
+                                formatter: function(value, context) {
+                                    if (total === 0) return '0%';
+                                    var percentage = ((value / total) * 100).toFixed(1);
+                                    return percentage + '%';
+                                },
+                                color: '#000',
+                                font: {
+                                    weight: 'bold',
+                                    size: 14
+                                }
+                            }
+                        }
+                    },
+                    plugins: [ChartDataLabels] // Aktifkan plugin datalabels
+                });
+            }
+
+            // Gambar grafik pertama kali (default: Januari)
+            drawChart(0);
+
+            // Event listener untuk filter bulan
+            jQuery('#monthFilter').on('change', function() {
+                var selectedMonth = parseInt(this.value);
+                drawChart(selectedMonth);
+            });
+        }).fail(function(error) {
+            console.log("Error fetching JSON:", error);
+        });
+    });
+</script>
